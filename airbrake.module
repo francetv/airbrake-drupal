@@ -12,7 +12,11 @@ function airbrake_init() {
 }
 
 function airbrake_watchdog($log) {
+
+  $log['variables'] = empty($log['variables']) ? array() : $log['variables'];
+
   $notify_on = variable_get('airbrake_conditions', array(WATCHDOG_EMERGENCY, WATCHDOG_ALERT, WATCHDOG_CRITICAL, WATCHDOG_ERROR));
+
   if (in_array($log['severity'], $notify_on)) {
     $airbrake['component'] = $log['type'];
     $airbrake['environmentName'] = variable_get('airbrake_environment', 'unset');
