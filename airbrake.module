@@ -77,8 +77,11 @@ function airbrake_libraries_info() {
       'file' => 'src/Airbrake/Version.php',
       'pattern' => "/NUMBER\s+=\s+'(\d+.\d+)'/",
       ),
-    );
-    
+    'xautoload' => function (\xautoload_InjectedAPI_hookXautoload $api) {
+      $api->add('Airbrake\\', 'src');
+    }
+  );
+
   $library['airbrake']['files']['php'] = array('EventHandler.php', 'Client.php', 'Configuration.php');
   return $library;
 }
