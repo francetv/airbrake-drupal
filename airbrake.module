@@ -216,4 +216,3 @@ function airbrake_test_integration() {
   
   return t('You should now see a couple of messages from your site on your Airbrake account.');
 }
-?>
