@@ -20,7 +20,7 @@ function airbrake_watchdog($log) {
   if (in_array($log['severity'], $notify_on)) {
     $airbrake['component'] = $log['type'];
     $airbrake['environmentName'] = variable_get('airbrake_environment', 'unset');
-    
+
     // just in case there's a field named "password" anywhere, don't send it.
     $session = $_SESSION;
     unset($session['password']);
@@ -31,41 +31,41 @@ function airbrake_watchdog($log) {
     $post = $_POST;
     unset($post['password']);
     $airbrake['postData'] = $post;
-    
+
     if (($library = libraries_load('airbrake')) && !empty($library['loaded'])) {
       $config = new Airbrake\Configuration(variable_get('airbrake_key', ''), $airbrake);
       $client = new Airbrake\Client($config);
       $response = $client->notifyOnError($log['message']);
-      
+
       // Build the http request instead of using one of the built-in methods of the library
       // so we can use drupal_http_request to make the request.
       $backtrace = debug_backtrace();
       if (count($backtrace) > 1) {
           array_shift($backtrace);
       }
-      
+
   		$notice = new Airbrake\Notice();
       $notice->load(array(
           'errorClass'   => 'Drupal Error',
           'backtrace'    => $backtrace,
           'errorMessage' => strip_tags(format_string($log['message'], $log['variables'])),
       ));
-      
+
       $headers = array(
   			'Accept' => 'text/xml, application/xml',
   			'Content-Type' => 'text/xml'
   		);
-  		  		
+
   		$opts = array(
   		    'headers' => $headers,
   		    'method' => 'POST',
-  		    'timeout' => $config->timeout,
+  		    'timeout' => ($config->timeout || 10),
   		    'data' => $notice->toXml($config)
   		  );
-      
-      $host = variable_get('airbreak_host', 'airbrakeapp.com');
+
+      $host = variable_get('airbrake_host', 'airbrakeapp.com');
       $url = "http://{$host}/notifier_api/v2/notices";
-      
+
       $response = drupal_http_request($url, $opts);
     }
   }
@@ -103,24 +103,24 @@ function airbrake_admin_settings() {
     '#description' => t('i.e. Production, Development, or Staging. Airbrake will group alerts from each environment together.'),
     '#default_value' => variable_get('airbrake_environment', ''),
   );
-  
-  $form['airbreak_host'] = array(
+
+  $form['airbrake_host'] = array(
     '#type' => 'textfield',
     '#title' => t('Host'),
     '#description' => t('The host that should receive the API call, for example <em>airbrakeapp.com</em>.'),
-    '#default_value' => variable_get('airbreak_host', 'airbrakeapp.com'),
+    '#default_value' => variable_get('airbrake_host', 'airbrakeapp.com'),
   );
 
   $opts = array(
-    WATCHDOG_EMERGENCY => 'Emergency: system is unusable', 
-    WATCHDOG_ALERT => 'Alert: action must be taken immediately', 
-    WATCHDOG_CRITICAL => 'Critical: critical conditions', 
+    WATCHDOG_EMERGENCY => 'Emergency: system is unusable',
+    WATCHDOG_ALERT => 'Alert: action must be taken immediately',
+    WATCHDOG_CRITICAL => 'Critical: critical conditions',
     WATCHDOG_ERROR => 'Error: error conditions',
     WATCHDOG_WARNING => 'Warning: warning conditions',
     WATCHDOG_NOTICE => 'Notice: normal but significant condition',
     WATCHDOG_INFO => 'Informational: informational messages',
     WATCHDOG_DEBUG => 'Debug: debug-level messages'
-  ); 
+  );
 
   $form['airbrake_conditions'] = array(
     '#type' => 'checkboxes',
@@ -128,9 +128,9 @@ function airbrake_admin_settings() {
     '#description' => t('Which watchdog severities should be sent to Airbrake?'),
     '#options' => $opts,
     '#default_value' => variable_get('airbrake_conditions', array(
-        WATCHDOG_EMERGENCY, 
-        WATCHDOG_ALERT, 
-        WATCHDOG_CRITICAL, 
+        WATCHDOG_EMERGENCY,
+        WATCHDOG_ALERT,
+        WATCHDOG_CRITICAL,
         WATCHDOG_ERROR)),
   );
 
@@ -157,7 +157,7 @@ function airbrake_requirements($phase) {
       $requirement[] = array(
         'title' => 'Airbrake API Key',
         'description' => t('@configure the Aibrake module to set an API key.', array('@configure' => l('Configure', 'admin/config/development/airbrake'))),
-        'severity' => REQUIREMENT_ERROR        
+        'severity' => REQUIREMENT_ERROR
         );
     }
     $env = variable_get('airbrake_environment', '');
@@ -165,7 +165,7 @@ function airbrake_requirements($phase) {
       $requirement[] = array(
         'title' => 'Airbrake Environment name',
         'description' => t('@configure an environment name in Aibrake for best results.', array('@configure' => l('Configure', 'admin/config/development/airbrake'))),
-        'severity' => REQUIREMENT_WARNING        
+        'severity' => REQUIREMENT_WARNING
         );
     }
   }
@@ -182,13 +182,13 @@ function airbrake_menu() {
     'access arguments' => array('administer site configuration'),
     'type' => MENU_NORMAL_ITEM,
   );
-  
+
   $items['admin/config/development/airbrake/settings'] = array(
     'title' => 'Settings',
     'access arguments' => array('administer site configuration'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  
+
   $items['admin/config/development/airbrake/test'] = array(
     'title' => 'Test',
     'description' => 'Test your Airbrake integration.',
@@ -197,7 +197,7 @@ function airbrake_menu() {
     'access arguments' => array('administer site configuration'),
     'type' => MENU_LOCAL_TASK,
   );
-  
+
   return $items;
 }
 
@@ -205,14 +205,14 @@ function airbrake_menu() {
  * Make a couple of calls to watchdog to see if the intregration works.
  */
 function airbrake_test_integration() {
-  $conditions = variable_get('airbrake_conditions', array(WATCHDOG_EMERGENCY, 
-        WATCHDOG_ALERT, 
-        WATCHDOG_CRITICAL, 
+  $conditions = variable_get('airbrake_conditions', array(WATCHDOG_EMERGENCY,
+        WATCHDOG_ALERT,
+        WATCHDOG_CRITICAL,
         WATCHDOG_ERROR));
-  
+
   foreach ($conditions as $condition) {
     watchdog('airbrake', 'This is a test from the Airbrake module.', NULL, $condition);
   }
-  
+
   return t('You should now see a couple of messages from your site on your Airbrake account.');
 }
