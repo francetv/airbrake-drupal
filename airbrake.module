@@ -37,6 +37,9 @@ function airbrake_watchdog($log) {
       $client = new Airbrake\Client($config);
       $response = $client->notifyOnError($log['message']);
 
+      $levels = watchdog_severity_levels();
+      $type = ucfirst($levels[$log['severity']]);
+
       // Build the http request instead of using one of the built-in methods of the library
       // so we can use drupal_http_request to make the request.
       $backtrace = debug_backtrace();
@@ -46,9 +49,9 @@ function airbrake_watchdog($log) {
 
   		$notice = new Airbrake\Notice();
       $notice->load(array(
-          'errorClass'   => 'Drupal Error',
+          'errorClass'   => $type,
           'backtrace'    => $backtrace,
-          'errorMessage' => strip_tags(format_string($log['message'], $log['variables'])),
+          'errorMessage' => $type . ' : '. strip_tags(format_string($log['message'], $log['variables'])),
       ));
 
       $headers = array(
