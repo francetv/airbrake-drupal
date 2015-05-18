@@ -22,9 +22,14 @@ function airbrake_watchdog($log) {
     $airbrake['environmentName'] = variable_get('airbrake_environment', 'unset');
 
     // just in case there's a field named "password" anywhere, don't send it.
-    $session = $_SESSION;
-    unset($session['password']);
-    $airbrake['sessionData'] = $session;
+    if (!empty($_SESSION)) {
+      $session = $_SESSION;
+      unset($session['password']);
+      $airbrake['sessionData'] = $session;
+    }
+    else  {
+      $airbrake['sessionData'] = '';
+    }
     $get = $_GET;
     unset($get['password']);
     $airbrake['getData'] = $get;
@@ -67,7 +72,8 @@ function airbrake_watchdog($log) {
   		  );
 
       $host = variable_get('airbrake_host', 'airbrakeapp.com');
-      $url = "http://{$host}/notifier_api/v2/notices";
+      $protocol = variable_get('airbrake_protocol', 1);
+      $url = (($protocol) ? 'https' : 'http') . "://{$host}/notifier_api/v2/notices";
 
       $response = drupal_http_request($url, $opts);
     }
@@ -112,6 +118,13 @@ function airbrake_admin_settings() {
     '#title' => t('Host'),
     '#description' => t('The host that should receive the API call, for example <em>airbrakeapp.com</em>.'),
     '#default_value' => variable_get('airbrake_host', 'airbrakeapp.com'),
+  );
+
+  $form['airbrake_protocol'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use HTTPS'),
+    '#description' => t('Use https to communicate with Errbit?'),
+    '#default_value' => variable_get('airbrake_protocol', 1),
   );
 
   $opts = array(
